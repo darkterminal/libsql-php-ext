@@ -13,5 +13,5 @@ fn main() {
       .with_header("#define FFI_LIB \"libsql_php_client.so\"")
       .generate()
       .expect("Unable to generate bindings")
-      .write_to_file("target/debug/libsql_php_client.h");
+      .write_to_file("include/libsql_php_client.h");
 }
