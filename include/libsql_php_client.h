@@ -1,24 +1,11 @@
-#ifndef LIBSQL_PHP_CLIENT_H
-#define LIBSQL_PHP_CLIENT_H
-
-#include <stdlib.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define FFI_LIB "libsql_php_client.so"
 
-void* libsql_php_connect(const char* path);
+void libsql_php_close(void *client_ptr);
 
-const char* libsql_php_query(void* client_ptr, const char* query);
+LocalClient *libsql_php_open_file(const char *path);
 
-const int* libsql_php_exec(void* client_ptr, const char* query);
+const char *libsql_php_query(void *client_ptr, const char *query);
 
-void free(void* ptr);
+const int *libsql_php_exec(void *client_ptr, const char *query);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // LIBSQL_PHP_CLIENT_H
+int libsql_php_sync(void *client_ptr);
