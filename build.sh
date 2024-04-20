@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Building..."
-cargo build
+cargo build --release
 
 echo "Checking if libs directory exists..."
 if [ ! -d "libs" ]; then
@@ -10,6 +10,6 @@ if [ ! -d "libs" ]; then
 fi
 
 echo "Copying lib into libs directory..."
-cp target/debug/libsql_php_client.so libs/
+cp target/release/libsql_php_client.so libs/
 
 echo "Done! ✨"
