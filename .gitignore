@@ -2,3 +2,7 @@
 *.db
 *.txt
 /libs/*.so
+_intelephense_helper.php
+sqlite3-test.php
+
+/vendor/
