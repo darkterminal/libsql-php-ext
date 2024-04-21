@@ -8,19 +8,19 @@ class LibsqlPHPResult
 
     public function __construct(array $data)
     {
-        $this->data = $data;
+        $this->data = $this->_raw_converter($data);
     }
 
     public function fetchArray(int $mode = SQLITE3_BOTH): array
     {
-        $result = $this->_results($this->data);
+        $result = $this->_results();
 
         if ($mode === SQLITE3_NUM) {
-            return $this->_sqlite3_fetch_num($result);
+            return $this->_sqlite3_fetch_num($this->fetchRaw());
         }
 
         if ($mode === SQLITE3_BOTH) {
-            return $this->_sqlite3_fetch_both($result);
+            return $this->_sqlite3_fetch_both($this->fetchRaw());
         }
 
         return $result;
@@ -31,42 +31,27 @@ class LibsqlPHPResult
     }
 
     public function columName(int|null $index = null): array|string|false {
+        $columns = array_keys($this->data['columns']);
+
         if (is_null($index)) {
-            return $this->data['columns'];
+            return $columns;
         }
 
-        if (isset($this->data['columns'][$index])) {
-            return $this->data['columns'][$index];
+        if (isset($columns[$index])) {
+            return $columns[$index];
         }
 
         return false;
     }
 
     public function columnType(int|string|null $column = null): array|string|false {
-
-        $collections = [];
-
-        foreach ($this->data['rows'] as $row) {
-            $rowValues = [];
-            foreach ($row['values'] as $value) {
-                $rowValues[] = $value['type'];
-            }
-            
-            $collections[] = array_combine($this->data['columns'], $rowValues);
-        }
-
-        $columnTypes = current($collections);
-
+        
         if (is_null($column)) {
-            return $columnTypes;
+            return array_values($this->data['columns']);
         }
 
-        if (is_string($column) && array_key_exists($column, $columnTypes)) {
-            return $columnTypes[$column];
-        }
-
-        if (is_integer($column)) {
-            return array_values($columnTypes)[$column];
+        if (isset($this->data['columns'][$column])) {
+            return $this->data['columns'][$column];
         }
 
         return false;
@@ -91,69 +76,64 @@ class LibsqlPHPResult
         return false;
     }
 
+    private function _raw_converter(array $data): array {
+        usort($data, function($a, $b) {
+            return $a['id']['Integer'] - $b['id']['Integer'];
+        });
+
+        $result = [
+            "columns" => [],
+            "rows" => [],
+        ];
+
+        foreach ($data as $item) {
+            foreach ($item as $key => $value) {
+                if (!isset($result['columns'][$key])) {
+                    $result['columns'][$key] = key($value);
+                }
+            }
+            $row = [];
+            foreach ($result['columns'] as $column => $type) {
+                $row[] = current($item[$column]);
+            }
+            $result['rows'][] = $row;
+        }
+        return $result;
+    }
+
     private function _results(): array
     {
-        $collections = [];
+        $columns = array_keys($this->data['columns']);
+        $result = array_map(function($row) use ($columns) {
+            return array_combine($columns, $row);
+        }, $this->data['rows']);
 
-        foreach ($this->data['rows'] as $row) {
-            $rowValues = [];
-            foreach ($row['values'] as $value) {
-                switch ($value['type']) {
-                    case 'text':
-                        $value = (string) $value['value'];
-                        break;
-                    case 'integer':
-                        $value = (int) $value['value'];
-                        break;
-                    case 'float':
-                        $value = (float) $value['value'];
-                        break;
-                    case 'null':
-                        $value = null;
-                        break;
-                    case 'blob':
-                        $value = $value;
-                        break;
-                    default:
-                        $value = (string) $value['value'];
-                        break;
-                }
-                $rowValues[] = $value;
-            }
-            
-            $collections[] = array_combine($this->data['columns'], $rowValues);
-        }
-
-        return $collections;
+        return $result;
     }
 
     private function _sqlite3_fetch_num(array $data): array {
-        $nums = array();
-    
-        foreach ($data as $row) {
-            $numsRow = array();
-            foreach ($row as $columnName => $columnValue) {
-                $columnNumber = array_search($columnName, array_keys($row));
-                $numsRow[$columnNumber] = $columnValue;
-            }
-            $nums[] = $numsRow;
-        }
-    
-        return $nums;
+        $result = array_map(function($row) {
+            return array_values($row); // Index the row by column number
+        }, $data['rows']);
+
+        return $result;
     }
 
     private function _sqlite3_fetch_both(array $data): array {
-        $both = array();
+        $columns = array_keys($data['columns']);
+        $result = [];
 
-        foreach ($data as $index => $row) {
-            $newRow = array();
-            foreach ($row as $columnName => $columnValue) {
-                $newRow[$columnName] = $columnValue;
-                $newRow[$index] = $columnValue;
+        foreach ($data['rows'] as $rowIndex => $row) {
+            $rowArray = [];
+            
+            foreach ($columns as $colIndex => $columnName) {
+                $rowArray[$columnName] = $row[$colIndex];
+                $rowArray[$colIndex] = $row[$colIndex];
             }
-            $both[] = $newRow;
+            
+            $result[$rowIndex] = $rowArray;
         }
 
-        return $both;
+        return $result;
     }
 }
