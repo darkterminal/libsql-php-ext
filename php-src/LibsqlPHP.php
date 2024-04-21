@@ -22,7 +22,7 @@ class LibsqlPHP implements SQLite3Interface
     }
 
     public function open(string $path): void {
-        $this->db = $this->ffi->libsql_php_open_file($path);
+        $this->db = $this->ffi->libsql_php_connect_local($path);
         $this->is_connected = ($this->db) ? true : false;
     }
 
@@ -38,18 +38,9 @@ class LibsqlPHP implements SQLite3Interface
 
     public function query(string $stmt): LibsqlPHPResult {
         $data = $this->ffi->libsql_php_query($this->db, $stmt);
-        $result = \FFI::new("char[4]");
-        if ($data !== null) {
-            $result = json_decode($data, true);
-        }
-        
-        if ($result instanceof \FFI\CData) {
-            $result = [];
-        }
 
-        $this->rows_affected = $result['rows_affected'];
-
-        return new LibsqlPHPResult($result);
+        $object = json_decode($data, true);
+        return new LibsqlPHPResult($object);
     }
 
     public function changes() : int {
