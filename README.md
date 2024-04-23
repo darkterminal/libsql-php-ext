@@ -25,7 +25,7 @@ use Darkterminal\LibsqlPHP\LibsqlPHP;
 
 require_once 'vendor/autoload.php';
 
-$db = new LibsqlPHP("database.db");
+$db = new LibsqlPHP("file:database.db");
 if ($db->is_connected()) {
 
     $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
