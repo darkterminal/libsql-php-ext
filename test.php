@@ -1,10 +1,10 @@
 <?php
 
-use Darkterminal\LibsqlPHP\LibsqlPHP;
+use Darkterminal\LibSQLPHPExtension\LibSQLPHP;
 
 require_once 'vendor/autoload.php';
 
-$db = new LibsqlPHP("file:database.db");
+$db = new LibSQLPHP("file:database.db");
 if ($db->is_connected()) {
     echo $db->version() . PHP_EOL;
 

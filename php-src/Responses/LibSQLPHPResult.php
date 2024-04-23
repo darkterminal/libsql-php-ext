@@ -1,20 +1,20 @@
 <?php
 
-namespace Darkterminal\LibsqlPHP\Responses;
+namespace Darkterminal\LibSQLPHPExtension\Responses;
 
 use FFI;
 
 /**
- * Represents the result set obtained from executing a query using LibsqlPHP.
+ * Represents the result set obtained from executing a query using LibSQLPHP.
  */
-class LibsqlPHPResult
+class LibSQLPHPResult
 {
     /**
      * Constructor.
      *
      * @param FFI $ffi The FFI instance.
      * @param mixed $db The database connection handle.
-     * @param array $data The raw result data obtained from LibsqlPHP.
+     * @param array $data The raw result data obtained from LibSQLPHP.
      */
     public function __construct(
         protected FFI $ffi,

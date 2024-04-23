@@ -1,14 +1,14 @@
 <?php
 
-namespace Darkterminal\LibsqlPHP\Responses;
+namespace Darkterminal\LibSQLPHPExtension\Responses;
 
-use Darkterminal\LibsqlPHP\LibsqlPHP;
+use Darkterminal\LibSQLPHPExtension\LibSQLPHP;
 use FFI;
 
 /**
  * Represents a prepared statement for executing SQL queries with parameter binding.
  */
-class LibsqlPHPStmt
+class LibSQLPHPStmt
 {
     protected array $named_parameters = [];
     protected array $positonal_parameters = [];
@@ -91,7 +91,7 @@ class LibsqlPHPStmt
             foreach ($this->named_parameters as $param => $paramData) {
                 $value = $this->typed_value($paramData['value'], $paramData['type']);
                 if ($paramData['type'] === LIBSQLPHP_TEXT || $paramData['type'] === LIBSQLPHP_BLOB) {
-                    $value = "'" . LibsqlPHP::escapeString($value) . "'";
+                    $value = "'" . LibSQLPHP::escapeString($value) . "'";
                 }
                 $query = str_replace($param, $value, $query);
             }
@@ -101,7 +101,7 @@ class LibsqlPHPStmt
             foreach ($this->positonal_parameters as $param => $paramData) {
                 $value = $this->typed_value($paramData['value'], $paramData['type']);
                 if ($paramData['type'] === LIBSQLPHP_TEXT || $paramData['type'] === LIBSQLPHP_BLOB) {
-                    $value = "'" . LibsqlPHP::escapeString($value) . "'";
+                    $value = "'" . LibSQLPHP::escapeString($value) . "'";
                 }
                 $query = preg_replace('/\?/', $value, $query, 1);
             }
@@ -127,7 +127,7 @@ class LibsqlPHPStmt
             foreach ($this->named_parameters as $param => $paramData) {
                 $value = $paramData['value'] ?? 'NULL';
                 if ($paramData['type'] === LIBSQLPHP_TEXT || $paramData['type'] === LIBSQLPHP_BLOB) {
-                    $value = "'" . LibsqlPHP::escapeString($value) . "'";
+                    $value = "'" . LibSQLPHP::escapeString($value) . "'";
                 }
                 $query = str_replace($param, $value, $query);
             }
@@ -135,7 +135,7 @@ class LibsqlPHPStmt
             foreach ($this->positonal_parameters as $param => $paramData) {
                 $value = $paramData['value'] ?? 'NULL';
                 if ($paramData['type'] === LIBSQLPHP_TEXT || $paramData['type'] === LIBSQLPHP_BLOB) {
-                    $value = "'" . LibsqlPHP::escapeString($value) . "'";
+                    $value = "'" . LibSQLPHP::escapeString($value) . "'";
                 }
                 $query = preg_replace('/\?/', $value, $query, 1);
             }

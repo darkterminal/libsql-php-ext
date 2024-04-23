@@ -1,22 +1,22 @@
 <?php
 
 /**
- * LibsqlPHP - A lightweight PHP database library utilizing LibSQL.
+ * LibSQLPHP - A lightweight PHP database library utilizing LibSQL.
  *
  * This class provides a simple interface to interact with databases using LibSQL.
  *
- * @package Darkterminal\LibsqlPHP
+ * @package Darkterminal\LibSQLPHPExtension
  */
 
-namespace Darkterminal\LibsqlPHP;
+namespace Darkterminal\LibSQLPHPExtension;
 
-use Darkterminal\LibsqlPHP\Responses\LibsqlPHPResult;
-use Darkterminal\LibsqlPHP\Responses\LibsqlPHPStmt;
+use Darkterminal\LibSQLPHPExtension\Responses\LibSQLPHPResult;
+use Darkterminal\LibSQLPHPExtension\Responses\LibSQLPHPStmt;
 
 /**
- * LibsqlPHP class.
+ * LibSQLPHP class.
  */
-class LibsqlPHP
+class LibSQLPHP
 {
     /**
      * FFI instance for interacting with the C library.
@@ -123,13 +123,13 @@ class LibsqlPHP
      *
      * @param string $stmt The SQL statement to execute.
      *
-     * @return LibsqlPHPResult The result of the query.
+     * @return LibSQLPHPResult The result of the query.
      */
-    public function query(string $stmt): LibsqlPHPResult
+    public function query(string $stmt): LibSQLPHPResult
     {
         $data = $this->ffi->libsql_php_query($this->db, $stmt);
         $object = json_decode($data, true);
-        return new LibsqlPHPResult($this->ffi, $this->db, $object);
+        return new LibSQLPHPResult($this->ffi, $this->db, $object);
     }
 
     /**
@@ -148,7 +148,7 @@ class LibsqlPHP
         if (strpos($stmt, 'WHERE') !== false && $end !== 'WHERE') {
             $data = $this->ffi->libsql_php_query($this->db, $stmt);
             $object = json_decode($data, true);
-            $result = new LibsqlPHPResult($this->ffi, $this->db, $object);
+            $result = new LibSQLPHPResult($this->ffi, $this->db, $object);
             $handle = current($result->fetchArray(LIBSQLPHP_ASSOC));
             $arr = array_map(fn ($value) => $value, array_values($handle));
             if ($entireRow !== true && count($arr) === 1) {
@@ -167,11 +167,11 @@ class LibsqlPHP
      *
      * @param string $query The SQL query to prepare.
      *
-     * @return LibsqlPHPStmt A prepared statement object.
+     * @return LibSQLPHPStmt A prepared statement object.
      */
-    public function prepare(string $query): LibsqlPHPStmt
+    public function prepare(string $query): LibSQLPHPStmt
     {
-        return new LibsqlPHPStmt($this->ffi, $this->db, $query);
+        return new LibSQLPHPStmt($this->ffi, $this->db, $query);
     }
 
     /**

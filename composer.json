@@ -4,7 +4,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Darkterminal\\LibsqlPHP\\": "php-src/"
+            "Darkterminal\\LibSQLPHPExtension\\": "php-src/"
         },
         "files": ["php-src/constants.php"]
     },
