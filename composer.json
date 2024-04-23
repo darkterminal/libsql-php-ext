@@ -1,11 +1,12 @@
 {
     "name": "darkterminal/libsql-php-ext",
-    "description": "LibSQL Extension for PHP",
+    "description": "LibSQL Native Extension for PHP",
     "license": "MIT",
     "autoload": {
         "psr-4": {
             "Darkterminal\\LibsqlPHP\\": "php-src/"
-        }
+        },
+        "files": ["php-src/constants.php"]
     },
     "authors": [
         {
