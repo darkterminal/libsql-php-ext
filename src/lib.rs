@@ -1,5 +1,5 @@
-use libc::{c_char, c_void};
-use libsql::{Builder, Connection, Value};
+use libc::{c_char, c_int, c_void};
+use libsql::{version, version_number, Builder, Cipher, Connection, EncryptionConfig, OpenFlags, Value};
 use once_cell::sync::OnceCell;
 use tokio::runtime::Runtime;
 use std::{collections::HashMap, ffi::{CStr, CString}, ptr};
@@ -29,11 +29,26 @@ pub extern "C" fn libsql_php_close(client_ptr: *mut c_void) {
 }
 
 #[no_mangle]
-pub extern "C" fn libsql_php_connect_local(path: *const c_char) -> *mut Connection {
+pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_char, encryption_key: *const c_char) -> *mut Connection {
     if path.is_null() {
         libsql_php_error("Error: Path is not defined", "ERR_PATH_IS_EMPTY");
         return ptr::null_mut();
     }
+
+    let flags_str = if flags.is_null() {
+        None
+    } else {
+        Some(unsafe { CStr::from_ptr(flags) }.to_str().unwrap_or(""))
+    };
+
+    let open_flags = match flags_str {
+        Some("LIBSQLPHP_OPEN_READONLY") => OpenFlags::SQLITE_OPEN_READ_ONLY,
+        Some("LIBSQLPHP_OPEN_READWRITE") => OpenFlags::SQLITE_OPEN_READ_WRITE,
+        Some("LIBSQLPHP_OPEN_CREATE") => OpenFlags::SQLITE_OPEN_CREATE,
+        Some("LIBSQLPHP_OPEN_READWRITE_LIBSQLPHP_OPEN_CREATE") => OpenFlags::default(),
+        Some("LIBSQLPHP_OPEN_READONLY_LIBSQLPHP_OPEN_CREATE") => OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_CREATE,
+        _ => OpenFlags::default()
+    };
 
     let c_str = unsafe {
         CStr::from_ptr(path)
@@ -47,10 +62,25 @@ pub extern "C" fn libsql_php_connect_local(path: *const c_char) -> *mut Connecti
         },
     };
 
+    let encryption_config = if !encryption_key.is_null() {
+        let key_c_str = unsafe { CStr::from_ptr(encryption_key) };
+        let key_str = key_c_str.to_str().unwrap_or("");
+        Some(EncryptionConfig::new(Cipher::Aes256Cbc, key_str.as_bytes().to_vec().into()))
+    } else {
+        None
+    };
+
     let rt = runtime();
 
     let conn = rt.block_on(async {
-        let db = Builder::new_local(path_str).build().await.unwrap();
+        let mut builder = Builder::new_local(path_str)
+            .flags(open_flags);
+
+        if let Some(enc_config) = encryption_config {
+            builder = builder.encryption_config(enc_config);
+        }
+
+        let db = builder.build().await.unwrap();
         let conn = db.connect().unwrap();
 
         Box::new(conn)
@@ -104,3 +134,76 @@ pub extern "C" fn libsql_php_query(client_ptr: *mut c_void, query: *const c_char
     c_json.into_raw()
 }
 
+#[no_mangle]
+pub extern "C" fn libsql_php_exec(client_ptr: *mut c_void, query: *const c_char) -> *const i64 {
+    if client_ptr.is_null() || query.is_null() {
+        libsql_php_error("Error: Client pointer or query is null", "ERR_INVALID_ARGUMENTS");
+        return ptr::null_mut();
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    let c_str_query = unsafe {
+        CStr::from_ptr(query)
+    };
+
+    let query_str = match c_str_query.to_str() {
+        Ok(str) => str,
+        Err(_) => {
+            libsql_php_error("Error: Failed to convert query to string", "ERR_INVALID_QUERY_CONVERT");
+            return ptr::null();
+        },
+    };
+
+    let exec_result = runtime().block_on(async { client.execute(query_str, ()).await });
+
+    match exec_result {
+        Ok(_) => {
+            let rows_affected = Box::new(client.last_insert_rowid());
+            Box::into_raw(rows_affected)
+        },
+        Err(_) => {
+            libsql_php_error("Error: Query execution failed", "ERR_QUERY_EXECUTION");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_affected_rows(client_ptr: *mut c_void) -> *const u64 {
+    if client_ptr.is_null() {
+        libsql_php_error("Error: Client pointer is null", "ERR_INVALID_ARGUMENTS");
+        return ptr::null_mut();
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    let affected_rows: u64 = client.changes();
+    Box::into_raw(Box::new(affected_rows))
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_reset(client_ptr: *mut c_void) -> *const c_int {
+    if client_ptr.is_null() {
+        libsql_php_error("Error: Client pointer is null", "ERR_INVALID_ARGUMENTS");
+        return ptr::null_mut();
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    runtime().block_on(client.reset());
+    std::ptr::null()
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_version() -> *const c_char {
+    let version = "LibSQL version ".to_string() + ": " + &version() + "-" + &version_number().to_string();
+    let c_version = CString::new(version).expect("CString::new failed");
+    c_version.into_raw() as *const c_char
+}
