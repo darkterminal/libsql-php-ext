@@ -3,6 +3,7 @@
 namespace Darkterminal\LibSQLPHPExtension\Responses;
 
 use Darkterminal\LibSQLPHPExtension\LibSQLPHP;
+use Darkterminal\LibSQLPHPExtension\Utils\QueryParams;
 use FFI;
 
 /**
@@ -17,7 +18,7 @@ class LibSQLPHPStmt
      * Constructor.
      *
      * @param FFI $ffi The FFI instance.
-     * @param mixed $db The database connection handle.
+     * @param $db The database connection handle.
      * @param string $query The SQL query string.
      */
     public function __construct(
@@ -81,7 +82,7 @@ class LibSQLPHPStmt
     /**
      * Execute the prepared statement with bound parameters.
      *
-     * @return string The executed SQL query string.
+     * @return bool True if the execution was successful, false otherwise.
      */
     public function execute()
     {
@@ -109,7 +110,11 @@ class LibSQLPHPStmt
 
         $this->reset();
 
-        return $query;
+        $params = [];
+        $queryParams = new QueryParams($params);
+        $exec = $this->ffi->libsql_php_exec($this->db, $query, $queryParams->getData(), $queryParams->getLength());
+        $queryParams->freeParams();
+        return $exec[0] === 0;
     }
 
     /**
