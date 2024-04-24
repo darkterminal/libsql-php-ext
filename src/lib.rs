@@ -30,15 +30,33 @@ pub extern "C" fn libsql_php_close(client_ptr: *mut c_void) {
 
 #[no_mangle]
 pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_char, encryption_key: *const c_char) -> *mut Connection {
+    fn from_cstring(c_str: *const c_char) -> Option<String> {
+        if c_str.is_null() {
+            return None;
+        }
+    
+        unsafe {
+            match CStr::from_ptr(c_str).to_str() {
+                Ok(str) => Some(str.to_string()),
+                Err(_) => {
+                    eprintln!("Error converting CString to string");
+                    None
+                }
+            }
+        }
+    }
+
     if path.is_null() {
         libsql_php_error("Error: Path is not defined", "ERR_PATH_IS_EMPTY");
         return ptr::null_mut();
     }
 
-    let flags_str = if flags.is_null() {
-        None
-    } else {
-        Some(unsafe { CStr::from_ptr(flags) }.to_str().unwrap_or(""))
+    let flags_str = match from_cstring(flags) {
+        Some(str) => str,
+        None => {
+            libsql_php_error("Error: Failed to convert flags to string", "ERR_INVALID_FLAGS_CONVERT");
+            return ptr::null_mut();
+        },
     };
 
     let open_flags = match flags_str {
@@ -54,17 +72,15 @@ pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_
         CStr::from_ptr(path)
     };
 
-    let path_str = match c_str.to_str() {
-        Ok(str) => str,
-        Err(_) => {
+    let path_str = match from_cstring(path) {
+        Some(str) => str,
+        None => {
             libsql_php_error("Error: Failed to convert path to string", "ERR_INVALID_PATH_CONVERT");
             return ptr::null_mut();
         },
     };
 
-    let encryption_config = if !encryption_key.is_null() {
-        let key_c_str = unsafe { CStr::from_ptr(encryption_key) };
-        let key_str = key_c_str.to_str().unwrap_or("");
+    let encryption_config = if let Some(key_str) = from_cstring(encryption_key) {
         Some(EncryptionConfig::new(Cipher::Aes256Cbc, key_str.as_bytes().to_vec().into()))
     } else {
         None
