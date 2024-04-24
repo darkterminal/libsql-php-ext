@@ -12,6 +12,9 @@ namespace Darkterminal\LibSQLPHPExtension;
 
 use Darkterminal\LibSQLPHPExtension\Responses\LibSQLPHPResult;
 use Darkterminal\LibSQLPHPExtension\Responses\LibSQLPHPStmt;
+use Darkterminal\LibSQLPHPExtension\Responses\Transaction;
+use Darkterminal\LibSQLPHPExtension\Utils\QueryParams;
+use Darkterminal\LibSQLPHPExtension\Utils\TransactionBehavior;
 
 /**
  * LibSQLPHP class.
@@ -94,6 +97,16 @@ class LibSQLPHP
         }
         $this->db = $this->ffi->libsql_php_connect_local($conn['uri'], $this->checkFlags($flags), $encryptionKey);
         $this->is_connected = ($this->db) ? true : false;
+    }
+
+    /**
+     * Checks whether the database connection is in autocommit mode.
+     *
+     * @return bool True if the database connection is in autocommit mode, false otherwise.
+     */
+    public function is_autocommit(): bool
+    {
+        return $this->ffi->libsql_php_is_autocommit($this->db);
     }
 
     /**
@@ -186,16 +199,53 @@ class LibSQLPHP
     }
 
     /**
+     * Retrieves the rowid of the most recently inserted row in the database.
+     *
+     * @return int The rowid of the most recently inserted row.
+     */
+    public function last_insert_rowid(): int
+    {
+        return $this->ffi->libsql_php_last_insert_rowid($this->db);
+    }
+
+    /**
+     * Initiates a database transaction with the specified behavior.
+     *
+     * @param string $behavior The behavior of the transaction (optional, defaults to TransactionBehavior::Deferred).
+     *
+     * @return Transaction A Transaction instance representing the initiated transaction.
+     */
+    public function transaction(string $behavior = TransactionBehavior::Deferred): Transaction
+    {
+        return new Transaction($this->ffi, $this->db, $behavior);
+    }
+
+    /**
      * Execute a SQL statement.
      *
-     * @param string $stmt The SQL statement to execute.
+     * @param string $query The SQL statement to execute.
+     * @param array $params The SQL parameters to execute.
      *
      * @return bool True if the execution was successful, false otherwise.
      */
-    public function exec(string $stmt): bool
+    public function exec(string $query, array $params = []): bool
     {
-        $exec = $this->ffi->libsql_php_exec($this->db, $stmt);
+        $queryParams = new QueryParams($params);
+        $exec = $this->ffi->libsql_php_exec($this->db, $query, $queryParams->getData(), $queryParams->getLength());
+        $queryParams->freeParams();
         return $exec[0] === 0;
+    }
+
+    /**
+     * Executes a batch of SQL queries.
+     *
+     * @param string $query The batch of SQL queries to execute.
+     *
+     * @return void
+     */
+    public function execute_batch(string $query): void
+    {
+        $this->ffi->libsql_php_execute_batch($this->db, $query);
     }
 
     /**
