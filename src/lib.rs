@@ -1,8 +1,8 @@
 use libc::{c_char, c_int, c_void};
-use libsql::{version, version_number, Builder, Cipher, Connection, EncryptionConfig, OpenFlags, Value};
+use libsql::{version, version_number, Builder, Cipher, Connection, EncryptionConfig, OpenFlags, Transaction, TransactionBehavior, Value};
 use once_cell::sync::OnceCell;
 use tokio::runtime::Runtime;
-use std::{collections::HashMap, ffi::{CStr, CString}, ptr};
+use std::{collections::HashMap, ffi::{CStr, CString}, ptr, slice};
 
 fn runtime() -> &'static Runtime {
     static RUNTIME: OnceCell<Runtime> = OnceCell::new();
@@ -135,7 +135,12 @@ pub extern "C" fn libsql_php_query(client_ptr: *mut c_void, query: *const c_char
 }
 
 #[no_mangle]
-pub extern "C" fn libsql_php_exec(client_ptr: *mut c_void, query: *const c_char) -> *const i64 {
+pub extern "C" fn libsql_php_exec(
+    client_ptr: *mut c_void,
+    query: *const c_char,
+    query_params: *const *const c_char, 
+    query_params_len: usize
+) -> *const i64 {
     if client_ptr.is_null() || query.is_null() {
         libsql_php_error("Error: Client pointer or query is null", "ERR_INVALID_ARGUMENTS");
         return ptr::null_mut();
@@ -157,13 +162,65 @@ pub extern "C" fn libsql_php_exec(client_ptr: *mut c_void, query: *const c_char)
         },
     };
 
-    let exec_result = runtime().block_on(async { client.execute(query_str, ()).await });
+    let params = if !query_params.is_null() && query_params_len > 0 {
+        let params_slice = unsafe { slice::from_raw_parts(query_params, query_params_len) };
+        params_slice.iter().filter_map(|&param_ptr| {
+            if param_ptr.is_null() {
+                None
+            } else {
+                let param_cstr = unsafe { CStr::from_ptr(param_ptr) };
+                param_cstr.to_str().ok().map(|s| libsql::Value::from(s.to_string()))
+            }
+        }).collect::<Vec<libsql::Value>>()
+    } else {
+        Vec::new()
+    };
+
+    let exec_result = runtime().block_on(async { 
+        client.execute(query_str, params).await
+    });
 
     match exec_result {
         Ok(_) => {
             let rows_affected = Box::new(client.last_insert_rowid());
             Box::into_raw(rows_affected)
         },
+        Err(_) => {
+            libsql_php_error("Error: Query execution failed", "ERR_QUERY_EXECUTION");
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_execute_batch(client_ptr: *mut c_void, query: *const c_char) -> *const c_int {
+    if client_ptr.is_null() || query.is_null() {
+        libsql_php_error("Error: Client pointer or query is null", "ERR_INVALID_ARGUMENTS");
+        return ptr::null_mut();
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    let c_str_query = unsafe {
+        CStr::from_ptr(query)
+    };
+
+    let query_str = match c_str_query.to_str() {
+        Ok(str) => str,
+        Err(_) => {
+            libsql_php_error("Error: Failed to convert query to string", "ERR_INVALID_QUERY_CONVERT");
+            return ptr::null();
+        },
+    };
+
+    let exec_result = runtime().block_on(async { 
+        client.execute_batch(query_str).await
+    });
+
+    match exec_result {
+        Ok(_) => std::ptr::null(),
         Err(_) => {
             libsql_php_error("Error: Query execution failed", "ERR_QUERY_EXECUTION");
             std::ptr::null_mut()
@@ -206,4 +263,169 @@ pub extern "C" fn libsql_version() -> *const c_char {
     let version = "LibSQL version ".to_string() + ": " + &version() + "-" + &version_number().to_string();
     let c_version = CString::new(version).expect("CString::new failed");
     c_version.into_raw() as *const c_char
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_is_autocommit(client_ptr: *mut c_void) -> i64 {
+    if client_ptr.is_null() {
+        libsql_php_error("Error: Client pointer is null", "ERR_INVALID_ARGUMENTS");
+        return 0;
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    let is_autocommit = client.is_autocommit();
+    if is_autocommit {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_last_insert_rowid(client_ptr: *mut c_void) -> i64 {
+    if client_ptr.is_null() {
+        libsql_php_error("Error: Client pointer is null", "ERR_INVALID_ARGUMENTS");
+        return 0;
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    let last_insert_rowid = client.last_insert_rowid();
+    last_insert_rowid
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_transaction(client_ptr: *mut c_void, behavior: *const c_char) -> *mut Transaction {
+    if client_ptr.is_null() {
+        libsql_php_error("Error: Client pointer is null", "ERR_INVALID_ARGUMENTS");
+        return ptr::null_mut();
+    }
+
+    let client = unsafe {
+        &mut *(client_ptr as *mut Connection)
+    };
+
+    let behavior_str = if behavior.is_null() {
+        None
+    } else {
+        Some(unsafe { CStr::from_ptr(behavior) }.to_str().unwrap_or(""))
+    };
+
+    let trx_behavior = match behavior_str {
+        Some("DEFERRED") => TransactionBehavior::Deferred,
+        Some("WRITE") => TransactionBehavior::Immediate,
+        Some("READ") => TransactionBehavior::ReadOnly,
+        _ => TransactionBehavior::Deferred
+    };
+
+    let trx = runtime().block_on(async {
+        let transaction = client.transaction_with_behavior(trx_behavior).await.unwrap();
+        transaction
+    });
+
+    Box::into_raw(Box::new(trx))
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_transaction_exec(
+    trx_ptr: *mut c_void,
+    query: *const c_char,
+    query_params: *const *const c_char, 
+    query_params_len: usize
+) -> *mut Transaction {
+    if trx_ptr.is_null() || query.is_null() {
+        libsql_php_error("Error: Null pointer provided", "ERR_INVALID_ARGUMENTS");
+        return ptr::null_mut();
+    }
+
+    let transaction = unsafe {
+        &mut *(trx_ptr as *mut Transaction)
+    };
+
+    let c_str_query = unsafe {
+        CStr::from_ptr(query)
+    };
+
+    let query_str = match c_str_query.to_str() {
+        Ok(str) => str,
+        Err(_) => {
+            libsql_php_error("Error: Failed to convert query to string", "ERR_INVALID_QUERY_CONVERT");
+            return ptr::null_mut();
+        },
+    };
+
+    let params = if !query_params.is_null() && query_params_len > 0 {
+        let params_slice = unsafe { slice::from_raw_parts(query_params, query_params_len) };
+        params_slice.iter().filter_map(|&param_ptr| {
+            if param_ptr.is_null() {
+                None
+            } else {
+                let param_cstr = unsafe { CStr::from_ptr(param_ptr) };
+                param_cstr.to_str().ok().map(|s| libsql::Value::from(s.to_string()))
+            }
+        }).collect::<Vec<libsql::Value>>()
+    } else {
+        Vec::new()
+    };
+
+    let result = runtime().block_on(async {
+        transaction.execute(query_str, params).await
+    });
+
+    match result {
+        Ok(_) => transaction,
+        Err(e) => {
+            libsql_php_error(&format!("Error executing transaction: {:?}", e), "ERR_EXECUTION_FAILED");
+            ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_transaction_commit(trx_ptr: *mut c_void) -> i64 {
+    if trx_ptr.is_null() {
+        libsql_php_error("Error: Null pointer provided", "ERR_INVALID_ARGUMENTS");
+        return 0;
+    }
+
+    let transaction = unsafe {
+        std::ptr::read(trx_ptr as *mut Transaction)
+    };
+
+    let commited = runtime().block_on(async { transaction.commit().await });
+
+    match commited {
+        Ok(_) => 1,
+        Err(_) => {
+            libsql_php_error("Error: Transaction commit failed", "ERR_COMMIT_FAILED");
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn libsql_php_transaction_rollback(trx_ptr: *mut c_void) -> i64 {
+    if trx_ptr.is_null() {
+        libsql_php_error("Error: Null pointer provided", "ERR_INVALID_ARGUMENTS");
+        return 0;
+    }
+
+    let transaction = unsafe {
+        std::ptr::read(trx_ptr as *mut Transaction)
+    };
+
+    let rollback = runtime().block_on(async { transaction.rollback().await });
+
+    match rollback {
+        Ok(_) => 1,
+        Err(_) => {
+            libsql_php_error("Error: Transaction rollback failed", "ERR_ROLLBACK_FAILED");
+            0
+        }
+    }
 }
