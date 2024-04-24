@@ -81,10 +81,10 @@ pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_
         CStr::from_ptr(path)
     };
 
-    let path_str = match from_cstring(path) {
-        Some(str) => str,
-        None => {
-            libsql_php_error(ERR_INVALID_PATH_CONVERT, "ERR_INVALID_PATH_CONVERT");
+    let path_str = match c_str.to_str() {
+        Ok(str) => str,
+        Err(_) => {
+            libsql_php_error("Error: Failed to convert path to string", "ERR_INVALID_PATH_CONVERT");
             return ptr::null_mut();
         },
     };
