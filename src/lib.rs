@@ -83,6 +83,7 @@ pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_
     let encryption_config = if let Some(key_str) = from_cstring(encryption_key) {
         Some(EncryptionConfig::new(Cipher::Aes256Cbc, key_str.as_bytes().to_vec().into()))
     } else {
+        libsql_php_error("Error: Failed to convert encryption key to string", "ERR_INVALID_KEY_CONVERT");
         None
     };
 
