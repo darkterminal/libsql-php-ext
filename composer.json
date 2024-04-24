@@ -14,6 +14,11 @@
             "email": "darkterminal@duck.com"
         }
     ],
+    "scripts": {
+        "post-install-cmd": [
+            "echo 'Post install command'"
+        ]
+    },
     "require": {
         "php": ">=8.3"
     }
