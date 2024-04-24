@@ -4,6 +4,15 @@ use once_cell::sync::OnceCell;
 use tokio::runtime::Runtime;
 use std::{collections::HashMap, ffi::{CStr, CString}, ptr, slice};
 
+const ERR_NULL_CLIENT_PTR: &str = "Error: Client pointer is null";
+const ERR_PATH_IS_EMPTY: &str = "Error: Path is not defined";
+// const ERR_INVALID_FLAGS_CONVERT: &str = "Error: Failed to convert flags to string";
+const ERR_INVALID_PATH_CONVERT: &str = "Error: Failed to convert path to string";
+// const ERR_INVALID_KEY_CONVERT: &str = "Error: Failed to convert encryption key to string";
+const ERR_INVALID_ARGUMENTS: &str = "Error: Client pointer or query is null";
+const ERR_INVALID_QUERY_CONVERT: &str = "Error: Failed to convert query to string";
+const ERR_QUERY_EXECUTION: &str = "Error: Query execution failed";
+
 fn runtime() -> &'static Runtime {
     static RUNTIME: OnceCell<Runtime> = OnceCell::new();
 
@@ -20,7 +29,7 @@ fn libsql_php_error(msg: &str, code: &str) {
 #[no_mangle]
 pub extern "C" fn libsql_php_close(client_ptr: *mut c_void) {
     if client_ptr.is_null() {
-        libsql_php_error("Error: Client pointer is null", "ERR_NULL_CLIENT_PTR");
+        libsql_php_error(ERR_NULL_CLIENT_PTR, "ERR_NULL_CLIENT_PTR");
         return;
     }
 
@@ -31,7 +40,7 @@ pub extern "C" fn libsql_php_close(client_ptr: *mut c_void) {
 #[no_mangle]
 pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_char, encryption_key: *const c_char) -> *mut Connection {
     if path.is_null() {
-        libsql_php_error("Error: Path is not defined", "ERR_PATH_IS_EMPTY");
+        libsql_php_error(ERR_PATH_IS_EMPTY, "ERR_PATH_IS_EMPTY");
         return ptr::null_mut();
     }
 
@@ -57,7 +66,7 @@ pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_
     let path_str = match c_str.to_str() {
         Ok(str) => str,
         Err(_) => {
-            libsql_php_error("Error: Failed to convert path to string", "ERR_INVALID_PATH_CONVERT");
+            libsql_php_error(ERR_INVALID_PATH_CONVERT, "ERR_INVALID_PATH_CONVERT");
             return ptr::null_mut();
         },
     };
@@ -107,7 +116,7 @@ pub extern "C" fn libsql_php_query(client_ptr: *mut c_void, query: *const c_char
     let query_str = match c_str_query.to_str() {
         Ok(str) => str,
         Err(_) => {
-            libsql_php_error("Error: Failed to convert query to string", "ERR_INVALID_QUERY_CONVERT");
+            libsql_php_error(ERR_INVALID_QUERY_CONVERT, "ERR_INVALID_QUERY_CONVERT");
             return ptr::null();
         },
     };
@@ -157,7 +166,7 @@ pub extern "C" fn libsql_php_exec(
     let query_str = match c_str_query.to_str() {
         Ok(str) => str,
         Err(_) => {
-            libsql_php_error("Error: Failed to convert query to string", "ERR_INVALID_QUERY_CONVERT");
+            libsql_php_error(ERR_INVALID_QUERY_CONVERT, "ERR_INVALID_QUERY_CONVERT");
             return ptr::null();
         },
     };
@@ -186,7 +195,7 @@ pub extern "C" fn libsql_php_exec(
             Box::into_raw(rows_affected)
         },
         Err(_) => {
-            libsql_php_error("Error: Query execution failed", "ERR_QUERY_EXECUTION");
+            libsql_php_error(ERR_INVALID_QUERY_CONVERT, "ERR_QUERY_EXECUTION");
             std::ptr::null_mut()
         }
     }
