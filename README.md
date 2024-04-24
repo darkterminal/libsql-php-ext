@@ -11,13 +11,14 @@ I will pack this code as Composer Package when is ready.
 Requirements:
 - Rust Installed
 - PHP Installed
-- FFI Extension is Enabled
+- FFI Extension is Enabled (_Why? I read the C heder definition from wrapper_)
 
 1. Clone this repo and `cd path/to/repo`
 2. run `cargo instlal`
 3. after that run `./build.sh`
 4. test the PHP file, run `php test.php`
 
+**LibSQL Version**
 ```php
 <?php
 
@@ -28,70 +29,336 @@ require_once 'vendor/autoload.php';
 $db = new LibsqlPHP("file:database.db");
 if ($db->is_connected()) {
     echo $db->version() . PHP_EOL;
-
-    // $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
-    // $db->exec("INSERT INTO users (name) VALUES ('Handoko')");
-    // $db->exec("INSERT INTO users (name) VALUES ('Karlina')");
-    // $db->exec("INSERT INTO users (name) VALUES ('Carla')");
-
-    // $result = $db->query("SELECT * FROM users");
-    
-    // echo "Return as raw:" . PHP_EOL;
-    // var_dump($result->fetchRaw());
-    
-    // echo "Return as associative array:" . PHP_EOL;
-    // $users = $result->fetchArray(LIBSQLPHP_ASSOC);
-    // foreach ($users as $user) {
-    //     echo $user['name'] . PHP_EOL;
-    // }
-
-    // echo "Return the column count:" . PHP_EOL;
-    // var_dump($result->numColumns());
-    
-    // echo "Return the column names:" . PHP_EOL;
-    // var_dump($result->columName());
-    
-    // echo "Return the column types:" . PHP_EOL;
-    // var_dump($result->columnType());
-
-    // $stmt = $db->prepare("INSERT INTO foo VALUES (:baz, @foo)");
-
-    // // Bind parameters
-    // $stmt->bindParam(':baz', $baz, LIBSQLPHP_TEXT);
-    // $stmt->bindParam('@foo', $foo, LIBSQLPHP_INTEGER);
-    // $baz = "baz";
-    // $foo = 2;
-    // echo $stmt->execute() . PHP_EOL;
-
-    // $stmt = $db->prepare("INSERT INTO foo VALUES (?, ?)");
-
-    // // Bind parameters
-    // $stmt->bindValue(1, "baz", LIBSQLPHP_TEXT);
-    // $stmt->bindValue(2, 5, LIBSQLPHP_INTEGER);
-    // echo $stmt->paramCount() . PHP_EOL;
-
-    // $db->exec("DELETE FROM users WHERE id = 3");
-
-    // $changes = $db->changes();
-    // echo "The DELETE statement removed $changes rows";
-
-    // $stmt = $db->prepare('INSERT INTO foo VALUES (?)');
-
-    // $age = 18;
-    // $stmt->bindValue(1, $age, LIBSQLPHP_INTEGER);
-
-    // // Check if the statement is read-only
-    // if ($stmt->readOnly()) {
-    //     echo "The statement is read-only.\n";
-    // } else {
-    //     echo "The statement is not read-only.\n";
-    // }
-
-    // $result = $db->querySingle("SELECT name FROM users WHERE id = 1");
-    // $result2 = $db->querySingle("SELECT name FROM users WHERE id = 2", true);
-    // var_dump($result);
-    // var_dump($result2);
 }
-$db->close();
-
+$db->close(); // Always close the database connection
 ```
+
+## Exec
+```php
+$db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
+$db->exec("INSERT INTO users (name) VALUES ('Handoko')");
+$db->exec("INSERT INTO users (name) VALUES ('Karlina')");
+```
+
+## Execute Batch
+
+Convenience method to run multiple SQL statements (that cannot take any parameters).
+```php
+$db->execute_batch("
+    BEGIN;
+    CREATE TABLE foo(x INTEGER);
+    CREATE TABLE bar(y TEXT);
+    COMMIT;
+");
+```
+
+## Get Last Insert ID
+```php
+var_dump($db->last_insert_rowid());
+```
+
+## Query Database
+```php
+$result = $db->query("SELECT * FROM users LIMIT 5");
+```
+
+## Return as Raw Format
+```php
+echo "Return as raw:" . PHP_EOL;
+var_dump($result->fetchRaw());
+
+// Result
+// array(2) {
+//   ["columns"]=>
+//   array(2) {
+//     ["name"]=>
+//     string(4) "Text"
+//     ["id"]=>
+//     string(7) "Integer"
+//   }
+//   ["rows"]=>
+//   array(5) {
+//     [0]=>
+//     array(2) {
+//       [0]=>
+//       string(5) "Randi"
+//       [1]=>
+//       int(1)
+//     }
+//     [1]=>
+//     array(2) {
+//       [0]=>
+//       string(4) "Ando"
+//       [1]=>
+//       int(2)
+//     }
+//     [2]=>
+//     array(2) {
+//       [0]=>
+//       string(4) "Danu"
+//       [1]=>
+//       int(3)
+//     }
+//     [3]=>
+//     array(2) {
+//       [0]=>
+//       string(10) "Rani Karni"
+//       [1]=>
+//       int(4)
+//     }
+//     [4]=>
+//     array(2) {
+//       [0]=>
+//       string(6) "Rumana"
+//       [1]=>
+//       int(5)
+//     }
+//   }
+// }
+```
+
+## Fetch a Result
+
+Fetches a result row as an associative or numerically indexed array or both like [SQLite3](https://www.php.net/manual/en/sqlite3result.fetcharray.php). default is `LIBSQLPHP_BOTH`, other options is: `LIBSQLPHP_ASSOC` or `LIBSQLPHP_NUM`
+
+### Fetch Default
+```php
+echo "Return as default (LIBSQLPHP_BOTH):" . PHP_EOL;
+$users = $result->fetchArray();
+
+var_dump($users);
+// array(5) {
+//   [0]=>
+//   array(4) {
+//     ["id"]=>
+//     int(1)
+//     [0]=>
+//     int(1)
+//     ["name"]=>
+//     string(5) "Randi"
+//     [1]=>
+//     string(5) "Randi"
+//   }
+//   [1]=>
+//   array(4) {
+//     ["id"]=>
+//     int(2)
+//     [0]=>
+//     int(2)
+//     ["name"]=>
+//     string(4) "Ando"
+//     [1]=>
+//     string(4) "Ando"
+//   }
+//   [2]=>
+//   array(4) {
+//     ["id"]=>
+//     int(3)
+//     [0]=>
+//     int(3)
+//     ["name"]=>
+//     string(4) "Danu"
+//     [1]=>
+//     string(4) "Danu"
+//   }
+//   [3]=>
+//   array(4) {
+//     ["id"]=>
+//     int(4)
+//     [0]=>
+//     int(4)
+//     ["name"]=>
+//     string(10) "Rani Karni"
+//     [1]=>
+//     string(10) "Rani Karni"
+//   }
+//   [4]=>
+//   array(4) {
+//     ["id"]=>
+//     int(5)
+//     [0]=>
+//     int(5)
+//     ["name"]=>
+//     string(6) "Rumana"
+//     [1]=>
+//     string(6) "Rumana"
+//   }
+// }
+```
+
+### Fetch Assoc
+```php
+echo "Return as default (LIBSQLPHP_ASSOC):" . PHP_EOL;
+$users = $result->fetchArray(LIBSQLPHP_ASSOC);
+
+var_dump($users);
+// array(5) {
+//   [0]=>
+//   array(2) {
+//     ["id"]=>
+//     int(1)
+//     ["name"]=>
+//     string(5) "Randi"
+//   }
+//   [1]=>
+//   array(2) {
+//     ["id"]=>
+//     int(2)
+//     ["name"]=>
+//     string(4) "Ando"
+//   }
+//   [2]=>
+//   array(2) {
+//     ["id"]=>
+//     int(3)
+//     ["name"]=>
+//     string(4) "Danu"
+//   }
+//   [3]=>
+//   array(2) {
+//     ["id"]=>
+//     int(4)
+//     ["name"]=>
+//     string(10) "Rani Karni"
+//   }
+//   [4]=>
+//   array(2) {
+//     ["id"]=>
+//     int(5)
+//     ["name"]=>
+//     string(6) "Rumana"
+//   }
+// }
+```
+
+### Fetch Num
+```php
+echo "Return as default (LIBSQLPHP_NUM):" . PHP_EOL;
+$users = $result->fetchArray(LIBSQLPHP_NUM);
+
+var_dump($users);
+// array(5) {
+//   [0]=>
+//   array(2) {
+//     [0]=>
+//     string(5) "Randi"
+//     [1]=>
+//     int(1)
+//   }
+//   [1]=>
+//   array(2) {
+//     [0]=>
+//     string(4) "Ando"
+//     [1]=>
+//     int(2)
+//   }
+//   [2]=>
+//   array(2) {
+//     [0]=>
+//     string(4) "Danu"
+//     [1]=>
+//     int(3)
+//   }
+//   [3]=>
+//   array(2) {
+//     [0]=>
+//     string(10) "Rani Karni"
+//     [1]=>
+//     int(4)
+//   }
+//   [4]=>
+//   array(2) {
+//     [0]=>
+//     string(6) "Rumana"
+//     [1]=>
+//     int(5)
+//   }
+// }
+```
+
+## Query Single
+
+```php
+$result = $db->querySingle("SELECT name FROM users WHERE id = 1");
+$result2 = $db->querySingle("SELECT name FROM users WHERE id = 2", true);
+var_dump($result);
+// string(5) "Randi"
+var_dump($result2);
+// array(1) {
+//   ["name"]=>
+//   string(4) "Ando"
+// }
+```
+
+## Get Total Columns
+
+```php
+echo "Return the column count:" . PHP_EOL;
+var_dump($result->numColumns());
+```
+
+## Get The Column Names
+```php
+echo "Return the column names:" . PHP_EOL;
+var_dump($result->columName());
+```
+
+## Get The Column Types
+```php
+echo "Return the column types:" . PHP_EOL;
+var_dump($result->columnType());
+```
+
+## Parameters Bindings
+
+### `bindParam`
+```php
+$stmt = $db->prepare("INSERT INTO persons (name, age) VALUES (:name, @age)");
+
+// Bind parameters
+$stmt->bindParam(':name', $baz, LIBSQLPHP_TEXT);
+$stmt->bindParam('@age', $foo, LIBSQLPHP_INTEGER);
+$baz = "Sarah";
+$foo = 22;
+$stmt->execute();
+```
+
+### `bindValue`
+```php
+$stmt = $db->prepare('INSERT INTO foo VALUES (?)');
+
+$age = 18;
+$stmt->bindValue(1, $age, LIBSQLPHP_INTEGER);
+$stmt->execute();
+```
+
+**What Prepare Query Have?**
+
+The `prepare` query give a result of `LibSQLPHPStmt` object that contains other method:
+- `bindParam` - Bind a PHP variable to a parameter in the prepared statement.
+- `bindValue` - Bind a value to a parameter in the prepared statement.
+- `execute` - Execute the prepared statement with bound parameters.
+- `getSQL` - Get the SQL query string with parameter values replaced.
+- `paramCount` - Get the number of parameters in the prepared statement.
+- `readOnly` - Check if the prepared statement is read-only.
+- `reset` - Reset the prepared statement, clearing bound parameters.
+- `clear` - Clear the values of bound parameters in the prepared statement.
+- `close` - Close the prepared statement, freeing resources.
+
+## Transaction
+
+```php
+$operations_successful = false;
+$tx = $db->transaction(TransactionBehavior::Deferred);
+$tx->exec("INSERT INTO users (name) VALUES (?)", ["Emanuel"]);
+$tx->exec("INSERT INTO users (name) VALUES (?)", ["Darren"]);
+
+if ($operations_successful) {
+    $tx->commit();
+    echo "Commit the changes" . PHP_EOL;
+} else {
+    $tx->rollback();
+    echo "Rollback the changes" . PHP_EOL;
+}
+```
+> NOTE: After `commit` or `rollback` the `$tx` will be free from memory
