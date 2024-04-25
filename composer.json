@@ -8,17 +8,13 @@
         },
         "files": ["php-src/constants.php"]
     },
+    "bin": ["build"],
     "authors": [
         {
             "name": "Imam Ali Mustofa",
             "email": "darkterminal@duck.com"
         }
     ],
-    "scripts": {
-        "post-install-cmd": [
-            "echo 'Post install command'"
-        ]
-    },
     "require": {
         "php": ">=8.3"
     }
