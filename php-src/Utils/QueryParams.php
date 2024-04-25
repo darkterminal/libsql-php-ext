@@ -42,7 +42,8 @@ class QueryParams
             foreach ($data as $i => $param) {
                 $param_len = strlen($param) + 1;
                 $this->ffi_query_params[$i] = \FFI::new("char[{$param_len}]", false);
-                \FFI::memcpy($this->ffi_query_params[$i], $param, $param_len);
+                $param_with_null = $param . "\0";
+                \FFI::memcpy($this->ffi_query_params[$i], $param_with_null, $param_len);
             }
         }
     }
@@ -52,7 +53,8 @@ class QueryParams
      *
      * @return mixed The address of the FFI query parameters array.
      */
-    public function getData() {
+    public function getData()
+    {
         return \FFI::addr($this->ffi_query_params[0]);
     }
 
@@ -61,7 +63,8 @@ class QueryParams
      *
      * @return int The length of the query parameters array.
      */
-    public function getLength() {
+    public function getLength()
+    {
         return $this->query_params_len;
     }
 
@@ -70,7 +73,8 @@ class QueryParams
      *
      * @return void
      */
-    public function freeParams() {
+    public function freeParams()
+    {
         for ($i = 0; $i < $this->query_params_len; $i++) {
             \FFI::free($this->ffi_query_params[$i]);
         }
