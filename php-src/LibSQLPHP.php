@@ -68,6 +68,10 @@ class LibSQLPHP
             throw new \Exception("LibSQLPHP Flags are not allowed to be used");
         }
 
+        if (!file_exists(__DIR__ . '/libsql_php.def') && !file_exists(__DIR__ . '/../libs/libsql_php_client.so')) {
+            throw new \Exception("LibSQLPHP definition and extension is not exits!");
+        }
+        
         // Load the FFI interface
         $this->ffi = \FFI::cdef(
             file_get_contents(__DIR__ . '/libsql_php.def'),
@@ -93,7 +97,7 @@ class LibSQLPHP
     {
         $conn = $this->checkConnectionMode($path);
         if ($conn === false || $conn['mode'] !== 'local') {
-            throw new \Exception("Error: Connection failed available mode: local://");
+            throw new \Exception("Error: Connection failed available mode: Local");
         }
         $this->db = $this->ffi->libsql_php_connect_local($conn['uri'], $this->checkFlags($flags), $encryptionKey);
         $this->is_connected = ($this->db) ? true : false;
@@ -233,7 +237,7 @@ class LibSQLPHP
         $queryParams = new QueryParams($params);
         $exec = $this->ffi->libsql_php_exec($this->db, $query, $queryParams->getData(), $queryParams->getLength());
         $queryParams->freeParams();
-        return $exec[0] === 0;
+        return $exec[0] > 0;
     }
 
     /**
