@@ -9,9 +9,9 @@ const ERR_PATH_IS_EMPTY: &str = "Error: Path is not defined";
 // const ERR_INVALID_FLAGS_CONVERT: &str = "Error: Failed to convert flags to string";
 const ERR_INVALID_PATH_CONVERT: &str = "Error: Failed to convert path to string";
 // const ERR_INVALID_KEY_CONVERT: &str = "Error: Failed to convert encryption key to string";
-const ERR_INVALID_ARGUMENTS: &str = "Error: Client pointer or query is null";
+// const ERR_INVALID_ARGUMENTS: &str = "Error: Client pointer or query is null";
 const ERR_INVALID_QUERY_CONVERT: &str = "Error: Failed to convert query to string";
-const ERR_QUERY_EXECUTION: &str = "Error: Query execution failed";
+// const ERR_QUERY_EXECUTION: &str = "Error: Query execution failed";
 
 fn runtime() -> &'static Runtime {
     static RUNTIME: OnceCell<Runtime> = OnceCell::new();
@@ -194,8 +194,8 @@ pub extern "C" fn libsql_php_exec(
             let rows_affected = Box::new(client.last_insert_rowid());
             Box::into_raw(rows_affected)
         },
-        Err(_) => {
-            libsql_php_error(ERR_INVALID_QUERY_CONVERT, "ERR_QUERY_EXECUTION");
+        Err(e) => {
+            libsql_php_error(&format!("Error: {e}"), "ERR_QUERY_EXECUTION");
             std::ptr::null_mut()
         }
     }
@@ -230,8 +230,8 @@ pub extern "C" fn libsql_php_execute_batch(client_ptr: *mut c_void, query: *cons
 
     match exec_result {
         Ok(_) => std::ptr::null(),
-        Err(_) => {
-            libsql_php_error("Error: Query execution failed", "ERR_QUERY_EXECUTION");
+        Err(e) => {
+            libsql_php_error(&format!("Error: {e}"), "ERR_QUERY_EXECUTION");
             std::ptr::null_mut()
         }
     }
