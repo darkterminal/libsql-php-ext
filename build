@@ -1,62 +1,126 @@
 #!/bin/bash
 
-project_dir=$(pwd)
+install_jq() {
+    local os_name="$1"
 
-# Get the operating system name
+    if ! command -v jq &>/dev/null; then
+        echo "jq is not installed. Installing jq..."
+        
+        if [[ "$os_name" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+        elif [[ "$os_name" == "Darwin" ]]; then
+            brew install jq
+        else
+            echo "Error: Unsupported operating system."
+            exit 1
+        fi
+        
+        if ! command -v jq &>/dev/null; then
+            echo "Error: Failed to install jq."
+            exit 1
+        fi
+
+        echo "jq has been installed successfully."
+    fi
+}
+
+check_composer_json() {
+    local composer_file="$1"
+    local key_name="$2"
+    local project_dir="$3"
+
+    if [ ! -f "$composer_file" ]; then
+        echo "Error: $composer_file not found in the project directory."
+        exit 1
+    fi
+
+    local actual_key_name=$(jq -r '.name' "$composer_file")
+
+    if [ "$actual_key_name" != "$key_name" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Function to build the extension
+build_extension() {
+    if [ ! -f "Cargo.toml" ]; then
+        echo "Error: Cargo.toml file not found in the extension directory. Please make sure it exists."
+        exit 1
+    fi
+
+    echo "Building the extension..."
+    cargo build --release
+
+    echo "Checking if libs directory exists..."
+    if [ ! -d "libs" ]; then
+        echo "Creating libs directory..."
+        mkdir libs
+    fi
+
+    echo "Copying lib into libs directory..."
+    cp "target/release/libsql_php_client.so" libs/
+}
+
+project_dir=$(pwd)
+extension_dir="vendor/darkterminal/libsql-php-ext"
 os_name=$(uname)
 
-# Check if the operating system is UNIX-like
 if [[ "$os_name" != "Linux" && "$os_name" != "Darwin" ]]; then
     echo "Error: This script requires a UNIX-like operating system (Linux or macOS) to run."
     exit 1
 fi
 
-# Check if PHP FFI is enabled
 if ! php -m | grep -q 'FFI'; then
     echo "Error: PHP FFI extension is not enabled. Please enable PHP FFI to proceed."
     exit 1
 fi
 
-# Check if Rust and Cargo are installed
 if ! command -v cargo &>/dev/null; then
     echo "Error: Rust and Cargo are required but not found. Please install Rust (including Cargo) to proceed."
     exit 1
 fi
 
-# Check if the C/C++ compiler is installed
 if ! command -v cc &>/dev/null && ! command -v gcc &>/dev/null && ! command -v g++ &>/dev/null; then
     echo "Error: C/C++ compiler is required but not found. Please install a C/C++ compiler to proceed."
     exit 1
 fi
 
 echo "😎 OhMyPunk! You're using $os_name"
-echo "+ PHP FFI Extention is enabled ✅"
+echo "+ PHP FFI Extension is enabled ✅"
 echo "+ 🦀 + 📦 is ready ✅"
-echo "+ C/C++ Compiler already setup! 🍻"
-extension_dir="vendor/darkterminal/libsql-php-ext"
-cd "$extension_dir" || exit
+echo "+ C/C++ Compiler already set up! 🍻"
 
-# Check if Cargo.toml file exists
-if [ ! -f "Cargo.toml" ]; then
-    echo "Error: Cargo.toml file not found in the extension directory. Please make sure it exists."
-    exit 1
+install_jq "$os_name"
+
+if ! check_composer_json "composer.json" "darkterminal/libsql-php-ext" "$project_dir"; then
+    
+    cd "$extension_dir" || exit
+    
+    build_extension
+
+    echo "Copying The Intelephense Helper for you... 😊"
+    if ! cp "_intelephense_helper.php" "$project_dir/_intelephense_helper.php"; then
+        echo "Error: Failed to copy the Intelephense Helper."
+        exit 1
+    fi
+
+    cd "$project_dir" || exit
+
+    if [ ! -f ".gitignore" ]; then
+        echo "Creating .gitignore file..."
+        echo "_intelephense_helper.php" >>.gitignore
+    else
+        if ! grep -q "_intelephense_helper.php" .gitignore; then
+            echo "Adding _intelephense_helper.php to .gitignore..."
+            echo "_intelephense_helper.php" >>.gitignore
+        fi
+    fi
+
+else
+    build_extension
 fi
-
-echo "Building the extension..."
-cargo build --release
-
-echo "Checking if libs directory exists..."
-if [ ! -d "libs" ]; then
-    echo "Creating libs directory..."
-    mkdir libs
-fi
-
-echo "Copying lib into libs directory..."
-cp "target/release/libsql_php_client.so" libs/
-
-echo "Copying The Intelephense Helper for you... 😊"
-cp "$extension_dir/_intelephense_helper.php" "$project_dir/_intelephense_helper.php"
-
-cd $project_dir
 
 echo "Building the extension is done! ✨"
