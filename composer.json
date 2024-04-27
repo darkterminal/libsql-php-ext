@@ -6,7 +6,10 @@
         "psr-4": {
             "Darkterminal\\LibSQLPHPExtension\\": "php-src/"
         },
-        "files": ["php-src/constants.php"]
+        "files": [
+            "php-src/constants.php",
+            "php-src/helpers.php"
+        ]
     },
     "bin": ["build"],
     "authors": [
