@@ -99,7 +99,12 @@ pub extern "C" fn libsql_php_connect_local(path: *const c_char, flags: *const c_
 }
 
 #[no_mangle]
-pub extern "C" fn libsql_php_query(client_ptr: *mut c_void, query: *const c_char) -> *const c_char {
+pub extern "C" fn libsql_php_query(
+    client_ptr: *mut c_void,
+    query: *const c_char,
+    query_params: *const *const c_char, 
+    query_params_len: usize
+) -> *const c_char {
     if client_ptr.is_null() || query.is_null() {
         libsql_php_error("Error: Client pointer or query is null", "ERR_INVALID_ARGUMENTS");
         return ptr::null_mut();
@@ -121,26 +126,52 @@ pub extern "C" fn libsql_php_query(client_ptr: *mut c_void, query: *const c_char
         },
     };
 
-    let query_result = runtime().block_on(async {
-        let mut rows = client.query(query_str, ()).await.unwrap();
-
-        let mut results: Vec<HashMap<String, Value>> = Vec::new();
-        while let Some(row) = rows.next().await.unwrap() {
-            let mut result = HashMap::new();
-            for idx in 0..rows.column_count() {
-                let column_name = row.column_name(idx as i32).unwrap();
-                let value = row.get_value(idx).unwrap();
-                result.insert(column_name.to_string(), value);
+    let params = if !query_params.is_null() && query_params_len > 0 {
+        let params_slice = unsafe { slice::from_raw_parts(query_params, query_params_len) };
+        params_slice.iter().filter_map(|&param_ptr| {
+            if param_ptr.is_null() {
+                None
+            } else {
+                let param_cstr = unsafe { CStr::from_ptr(param_ptr) };
+                param_cstr.to_str().ok().map(|s| libsql::Value::from(s.to_string()))
             }
-            results.push(result);
-        }
+        }).collect::<Vec<libsql::Value>>()
+    } else {
+        Vec::new()
+    };
 
-        results
+    let query_result = runtime().block_on(async {
+        match client.query(query_str, params).await {
+            Ok(mut rows) => {
+                let mut results: Vec<HashMap<String, Value>> = Vec::new();
+                while let Ok(Some(row)) = rows.next().await {
+                    let mut result = HashMap::new();
+                    for idx in 0..rows.column_count() {
+                        let column_name = row.column_name(idx as i32).unwrap();
+                        let value = row.get_value(idx).unwrap();
+                        result.insert(column_name.to_string(), value);
+                    }
+                    results.push(result);
+                }
+                Ok(results)
+            },
+            Err(e) => {
+                Err(e)
+            }
+        }
     });
 
-    let json = serde_json::to_string(&query_result).unwrap();
-    let c_json = CString::new(json).unwrap();
-    c_json.into_raw()
+    match query_result {
+        Ok(results) => {
+            let json = serde_json::to_string(&results).unwrap();
+            let c_json = CString::new(json).unwrap();
+            c_json.into_raw()
+        },
+        Err(e) => {
+            libsql_php_error(&format!("Error executing query: {e}"), "ERR_QUERY_EXECUTION");
+            ptr::null()
+        }
+    }
 }
 
 #[no_mangle]
@@ -333,11 +364,17 @@ pub extern "C" fn libsql_php_transaction(client_ptr: *mut c_void, behavior: *con
     };
 
     let trx = runtime().block_on(async {
-        let transaction = client.transaction_with_behavior(trx_behavior).await.unwrap();
+        let transaction = client.transaction_with_behavior(trx_behavior).await;
         transaction
     });
 
-    Box::into_raw(Box::new(trx))
+    match trx {
+        Ok(trx) => Box::into_raw(Box::new(trx)),
+        Err(e) => {
+            libsql_php_error(&format!("Error: {e}"), "ERR_INICIATE_TRANSACTION");
+            std::ptr::null_mut()
+        }
+    }
 }
 
 #[no_mangle]
