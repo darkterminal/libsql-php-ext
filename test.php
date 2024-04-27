@@ -17,10 +17,12 @@ if ($db->is_connected()) {
     // $db->exec("INSERT INTO users (name) VALUES (?)", ["Marlo"]);
     // var_dump($db->last_insert_rowid());
 
-    // $result = $db->query("SELECT * FROM users LIMIT 5");
+    // $result = $db->query('SELECT * FROM users');
 
     // echo "Return as raw:" . PHP_EOL;
-    // var_dump($result->fetchRaw());
+    // var_dump($result->fetchRaw(LIBSQLPHP_ASSOC));
+
+    // echo json_encode(["name" => "Merlin"]) . PHP_EOL;
 
     // echo "Return as default (LIBSQLPHP_NUM):" . PHP_EOL;
     // $users = $result->fetchArray(LIBSQLPHP_NUM);
