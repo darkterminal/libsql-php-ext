@@ -38,13 +38,15 @@ class FFI
     public function libsql_php_sync($db) {}
 
     /**
-     * Query the database
+     * Query the database with positional params
      *
      * @param Connection $db
      * @param string $stmt
+     * @param array $args
+     * @param int $args_len
      * @return string
      */
-    public function libsql_php_query($db, $stmt) {}
+    public function libsql_php_query($db, $stmt, $args, $args_len) {}
 
     /**
      * Query the database
