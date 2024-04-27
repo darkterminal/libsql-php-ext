@@ -6,7 +6,10 @@ Connection *libsql_php_connect_local(const char *path,
                                      const char *flags,
                                      const char *encryption_key);
 
-const char *libsql_php_query(void *client_ptr, const char *query);
+const char *libsql_php_query(void *client_ptr,
+                             const char *query,
+                             const char *const *query_params,
+                             uintptr_t query_params_len);
 
 const int64_t *libsql_php_exec(void *client_ptr,
                                const char *query,
