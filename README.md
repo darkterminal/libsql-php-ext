@@ -1,46 +1,62 @@
-# LibSQL Client PHP
+<p align="center">
+    <img src="https://i.imgur.com/3tGQJNa.png" alt="LibSQL PHP Extension" width="1000">
+</p>
+<p align="center">
+  <b>LibSQL Extension for PHP</b> <br />
+  The Core Dependency of <a href="https://github.com/darkterminal/libsql-client-php" target="_blank"><b>LibSQL Client PHP</b></a>
+</p>
 
-This is experimental - work in progress
+## Requirements
 
-## How To Tryit?
-
-**DISCLAIMER: I only tested using Linux**
-
-I will pack this code as Composer Package when is ready.
-
-Requirements:
+- Linux or Darwin OS
+- C/C++ Compiler
+- jq
 - Rust Installed
 - PHP Installed
 - FFI Extension is Enabled (_Why? I read the C heder definition from wrapper_)
 
-1. Clone this repo and `cd path/to/repo`
-2. run `cargo instlal`
-3. after that run `./build.sh`
-4. test the PHP file, run `php test.php`
+## 🚨 DISCLAIMER 🚨
 
-**LibSQL Version**
+I only tested using Linux. This library is stand-alone and can be used to perform database operations using LibSQL locally or in-memory similar to using SQLite3.
+
+## How To Try it?
+
+**Install**
+
+```bash
+composer require darkterminal/libsql-php-ext
+```
+
+**Build The Extension**
+
+```bash
+./vendor/bin/build
+```
+
+## 💡 Usage Examples and Available Features
+
 ```php
 <?php
 
-use Darkterminal\LibSQLPHPExtension\LibsqlPHP;
+use Darkterminal\LibSQLPHPExtension\LibSQLPHP;
 
 require_once 'vendor/autoload.php';
 
-$db = new LibsqlPHP("file:database.db");
+$db = new LibSQLPHP("file:database.db");
 if ($db->is_connected()) {
     echo $db->version() . PHP_EOL;
 }
 $db->close(); // Always close the database connection
 ```
 
-## Exec
+### Exec
 ```php
 $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
 $db->exec("INSERT INTO users (name) VALUES ('Handoko')");
 $db->exec("INSERT INTO users (name) VALUES ('Karlina')");
 ```
 
-## Execute Batch
+### Execute Batch
 
 Convenience method to run multiple SQL statements (that cannot take any parameters).
 ```php
@@ -52,17 +68,17 @@ $db->execute_batch("
 ");
 ```
 
-## Get Last Insert ID
+### Get Last Insert ID
 ```php
 var_dump($db->last_insert_rowid());
 ```
 
-## Query Database
+### Query Database
 ```php
 $result = $db->query("SELECT * FROM users LIMIT 5");
 ```
 
-## Return as Raw Format
+### Return as Raw Format
 ```php
 echo "Return as raw:" . PHP_EOL;
 var_dump($result->fetchRaw());
@@ -117,11 +133,11 @@ var_dump($result->fetchRaw());
 // }
 ```
 
-## Fetch a Result
+### Fetch a Result
 
 Fetches a result row as an associative or numerically indexed array or both like [SQLite3](https://www.php.net/manual/en/sqlite3result.fetcharray.php). default is `LIBSQLPHP_BOTH`, other options is: `LIBSQLPHP_ASSOC` or `LIBSQLPHP_NUM`
 
-### Fetch Default
+#### Fetch Default
 ```php
 echo "Return as default (LIBSQLPHP_BOTH):" . PHP_EOL;
 $users = $result->fetchArray();
@@ -186,7 +202,7 @@ var_dump($users);
 // }
 ```
 
-### Fetch Assoc
+#### Fetch Assoc
 ```php
 echo "Return as default (LIBSQLPHP_ASSOC):" . PHP_EOL;
 $users = $result->fetchArray(LIBSQLPHP_ASSOC);
@@ -231,7 +247,7 @@ var_dump($users);
 // }
 ```
 
-### Fetch Num
+#### Fetch Num
 ```php
 echo "Return as default (LIBSQLPHP_NUM):" . PHP_EOL;
 $users = $result->fetchArray(LIBSQLPHP_NUM);
@@ -276,7 +292,7 @@ var_dump($users);
 // }
 ```
 
-## Query Single
+### Query Single
 
 ```php
 $result = $db->querySingle("SELECT name FROM users WHERE id = 1");
@@ -290,28 +306,28 @@ var_dump($result2);
 // }
 ```
 
-## Get Total Columns
+### Get Total Columns
 
 ```php
 echo "Return the column count:" . PHP_EOL;
 var_dump($result->numColumns());
 ```
 
-## Get The Column Names
+### Get The Column Names
 ```php
 echo "Return the column names:" . PHP_EOL;
 var_dump($result->columName());
 ```
 
-## Get The Column Types
+### Get The Column Types
 ```php
 echo "Return the column types:" . PHP_EOL;
 var_dump($result->columnType());
 ```
 
-## Parameters Bindings
+### Parameters Bindings
 
-### `bindParam`
+#### `bindParam`
 ```php
 $stmt = $db->prepare("INSERT INTO persons (name, age) VALUES (:name, @age)");
 
@@ -323,7 +339,7 @@ $foo = 22;
 $stmt->execute();
 ```
 
-### `bindValue`
+#### `bindValue`
 ```php
 $stmt = $db->prepare('INSERT INTO foo VALUES (?)');
 
@@ -345,7 +361,7 @@ The `prepare` query give a result of `LibSQLPHPStmt` object that contains other 
 - `clear` - Clear the values of bound parameters in the prepared statement.
 - `close` - Close the prepared statement, freeing resources.
 
-## Transaction
+### Transaction
 
 ```php
 $operations_successful = false;
@@ -362,3 +378,14 @@ if ($operations_successful) {
 }
 ```
 > NOTE: After `commit` or `rollback` the `$tx` will be free from memory
+
+---
+
+If this library is useful and wants to support what I do. Please say a prayer to the God you believe in to always give you and me health and blessings in life, or you can become my GitHub Sponsor.
+
+```
+Regard,
+
+.darkterminal 
+(Software Freestyle Engineer - 🇮🇩)
+```
