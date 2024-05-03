@@ -10,22 +10,48 @@ The constructor of the LibSQLPHP class ensures that the provided parameters are 
 public function __construct(
     string $path = "",
     int $flags = LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE,
-    string $encryptionKey = ""
+    string $encryptionKey = "",
+    string $url = "",
+    string $token = "",
+    int $sync_interval = 5,
+    bool $read_your_writes = true
 )
 ```
 
 **Parameters:**
 
-- `$path` - Path to the database file. eg. `file:database.db` or `:memory:` or empty
-- `$flags` - Flags to control database opening mode. Default: `LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE`
-- `$encryptionKey` - Encryption key for database (if applicable).
+- `$path` - **(Local/Remote Replica)** Path to the database file.
+- `$flags` - **(Local)** Flags to control database opening mode. Default: `LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE`
+- `$encryptionKey` - **(Local/Remote Replica)** Encryption key for database (if applicable).
+- `$url` - **(Remote Replica)** Base URL for HTTP connection (if applicable).
+- `$token` - **(Remote Replica)** Authentication token for HTTP connection (if applicable).
+- `$sync_interval` - **(Remote Replica)** Database sync duration in seconds (if applicable).
+- `$read_your_writes` - **(Remote Replica)** Enable read-your-writes consistency (if applicable).
 
-**Example**
+### Example Local File Connection
 
 ```php
+// Minimal option
 $db = new LibSQLPHP("file:database.db");
+
+// Full option
+$db = new LibSQLPHP("file:database.db", LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE, "encryptionKey");
+```
+
+### Example In-Memory Connection
+
+```php
 $db = new LibSQLPHP(":memory:");
-$db = new LibSQLPHP();
+```
+
+### Example Remote Replica Connection
+
+```php
+// Minimal option
+$db = new LibSQLPHP(path: "file:database.db", url: $url, token: $token);
+
+// Full option
+$db = new LibSQLPHP(path: "file:database.db", url: $url, token: $token, sync_interval: 10, read_your_writes: true);
 ```
 
 ## Open
