@@ -1,4 +1,20 @@
 # DON'T REMOVE THIS F "C" K DEFINITION
+typedef struct Database Database;
+typedef struct Connection Connection;
+
+typedef struct DbConnPair {
+    Database *db;
+    Connection *conn;
+} DbConnPair;
+
+struct DbConnPair *libsql_php_connect_new_remote_replica(const char *path,
+                                                         const char *url,
+                                                         const char *token,
+                                                         uintptr_t sync_duration,
+                                                         int read_your_writes);
+
+int32_t libsql_php_sync(struct DbConnPair *pair);
+
 void* libsql_php_connect_local(const char *path,
                                      const char *flags,
                                      const char *encryption_key);
