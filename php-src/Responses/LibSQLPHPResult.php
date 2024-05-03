@@ -143,10 +143,6 @@ class LibSQLPHPResult
      */
     private function _raw_converter(array $data): array
     {
-        usort($data, function ($a, $b) {
-            return $a['id']['Integer'] - $b['id']['Integer'];
-        });
-
         $result = [
             "columns" => [],
             "rows" => [],
