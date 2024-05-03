@@ -5,9 +5,8 @@ use Darkterminal\LibSQLPHPExtension\Utils\TransactionBehavior;
 
 require_once 'vendor/autoload.php';
 
-$db = new LibSQLPHP("file:database.db");
+$db = new LibSQLPHP(path: "file:database.db", url: getenv('TURSO_DATABASE_URL'), token: getenv('TURSO_DATABASE_URL'));
 if ($db->is_connected()) {
-
     echo $db->version() . PHP_EOL;
 
     // $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)");
@@ -20,7 +19,7 @@ if ($db->is_connected()) {
     // $result = $db->query('SELECT * FROM users');
 
     // echo "Return as raw:" . PHP_EOL;
-    // var_dump($result->fetchRaw(LIBSQLPHP_ASSOC));
+    // var_dump($result->fetchRaw());
 
     // echo json_encode(["name" => "Merlin"]) . PHP_EOL;
 
@@ -98,5 +97,8 @@ if ($db->is_connected()) {
     //     CREATE TABLE bar(y TEXT);
     //     COMMIT;
     // ");
+
+    // $db->exec("INSERT INTO users (name, email) VALUES ('Cintia Messa', 'cintia@duck.com')");
+
 }
 $db->close();
