@@ -1,5 +1,6 @@
 /target
 *.db
+*.db*
 *.txt
 /libs/*.so
 sqlite3-test.php
