@@ -6,3 +6,4 @@ sqlite3-test.php
 /php-src/**-bak.def
 
 /vendor/
+.env
