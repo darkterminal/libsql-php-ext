@@ -101,23 +101,7 @@ if ! check_composer_json "composer.json" "darkterminal/libsql-php-ext" "$project
     
     build_extension
 
-    echo "Copying The Intelephense Helper for you... 😊"
-    if ! cp "_intelephense_helper.php" "$project_dir/_intelephense_helper.php"; then
-        echo "Error: Failed to copy the Intelephense Helper."
-        exit 1
-    fi
-
     cd "$project_dir" || exit
-
-    if [ ! -f ".gitignore" ]; then
-        echo "Creating .gitignore file..."
-        echo "_intelephense_helper.php" >>.gitignore
-    else
-        if ! grep -q "_intelephense_helper.php" .gitignore; then
-            echo "Adding _intelephense_helper.php to .gitignore..."
-            echo "_intelephense_helper.php" >>.gitignore
-        fi
-    fi
 
 else
     build_extension
