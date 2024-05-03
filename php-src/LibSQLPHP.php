@@ -50,6 +50,8 @@ class LibSQLPHP
      */
     public string $connection_mode;
 
+    protected $dbPair;
+
     /**
      * Constructor.
      * 
@@ -58,24 +60,50 @@ class LibSQLPHP
      * the FFI interface for interacting with the LibSQL library, and opens a connection to the database. 
      * It encapsulates the initialization logic required for setting up a new instance of the LibSQLPHP class.
      * 
-     * **Example**
+     * ## Example Local File Connection
      * 
      * ```
+     * // Minimal option
      * $db = new LibSQLPHP("file:database.db");
+     * 
+     * // Full option
+     * $db = new LibSQLPHP("file:database.db", LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE, "encryptionKey");
+     * ```
+     * 
+     * ## Example In-Memory Connection
+     * 
+     * ```
      * $db = new LibSQLPHP(":memory:");
-     * $db = new LibSQLPHP();
+     * ```
+     * 
+     * ## Example Remote Replica Connection
+     * 
+     * ```
+     * // Minimal option
+     * $db = new LibSQLPHP(path: "file:database.db", url: $url, token: $token);
+     * 
+     * // Full option
+     * $db = new LibSQLPHP(path: "file:database.db", url: $url, token: $token, sync_interval: 10, read_your_writes: true);
      * ```
      *
-     * @param string $path Path to the database file.
-     * @param int $flags Flags to control database opening mode. Default: LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE
-     * @param string $encryptionKey Encryption key for database (if applicable).
+     * @param string $path **(Local/Remote Replica)** Path to the database file.
+     * @param int $flags **(Local)** Flags to control database opening mode. Default: LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE
+     * @param string $encryptionKey **(Local/Remote Replica)** Encryption key for database (if applicable).
+     * @param string $url **(Remote Replica)** Base URL for HTTP connection (if applicable).
+     * @param string $token **(Remote Replica)** Authentication token for HTTP connection (if applicable).
+     * @param int $sync_interval **(Remote Replica)** Database sync duration in seconds (if applicable).
+     * @param bool $read_your_writes **(Remote Replica)** Enable read-your-writes consistency (if applicable).
      *
-     * @throws \Exception If invalid flags are provided.
+     * @throws \Exception If invalid flags are provided or if LibSQLPHP definition and extension files do not exist.
      */
     public function __construct(
         string $path = "",
         int $flags = LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE,
-        string $encryptionKey = ""
+        string $encryptionKey = "",
+        string $url = "",
+        string $token = "",
+        int $sync_interval = 5,
+        bool $read_your_writes = true
     ) {
         // Check if provided flags are allowed
         if ($this->checkFlags($flags) === false) {
@@ -93,41 +121,81 @@ class LibSQLPHP
         );
 
         // Open the database
-        $this->open($path, $flags, $encryptionKey);
+        $this->open($path, $flags, $encryptionKey, $url, $token, $sync_interval, $read_your_writes);
     }
 
     /**
      * Open a connection to a local database.
      * 
-     * **Example**
+     * ## Example Local File Connection
      * 
      * ```
-     * $db = new LibSQLPHP();
-     * $db->open("file:database.db");
+     * // Minimal option
+     * $db = new LibSQLPHP("file:database.db");
+     * 
+     * // Full option
+     * $db = new LibSQLPHP("file:database.db", LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE, "encryptionKey");
+     * ```
+     * 
+     * ## Example In-Memory Connection
+     * 
+     * ```
+     * $db = new LibSQLPHP(":memory:");
+     * ```
+     * 
+     * ## Example Remote Replica Connection
+     * 
+     * ```
+     * // Minimal option
+     * $db = new LibSQLPHP(path: "file:database.db", url: $url, token: $token);
+     * 
+     * // Full option
+     * $db = new LibSQLPHP(path: "file:database.db", url: $url, token: $token, sync_interval: 10, read_your_writes: true);
      * ```
      *
-     * @param string $path The path to the local database file.
-     * @param int $flags Flags to control database opening mode.
-     * @param string $encryptionKey Encryption key for the database (optional).
+     * @param string $path **(Local/Remote Replica)** Path to the database file.
+     * @param int $flags **(Local)** Flags to control database opening mode. Default: LIBSQLPHP_OPEN_READWRITE | LIBSQLPHP_OPEN_CREATE
+     * @param string $encryptionKey **(Local/Remote Replica)** Encryption key for database (if applicable).
+     * @param string $url **(Remote Replica)** Base URL for HTTP connection (if applicable).
+     * @param string $token **(Remote Replica)** Authentication token for HTTP connection (if applicable).
+     * @param int $sync_interval **(Remote Replica)** Database sync duration in seconds (if applicable).
+     * @param bool $read_your_writes **(Remote Replica)** Enable read-your-writes consistency (if applicable).
      *
-     * @return void
-     *
-     * @throws \Exception If the connection mode is not 'local'.
+     * @throws \Exception If invalid flags are provided or if LibSQLPHP definition and extension files do not exist.
      */
-    public function open(string $path, int $flags, string $encryptionKey = ""): void
-    {
+    public function open(
+        string $path,
+        int $flags,
+        string $encryptionKey = "",
+        string $url = "",
+        string $token = "",
+        int $sync_interval = 0,
+        bool $read_your_writes = true
+    ): void {
         // Check if provided flags are allowed
         if ($this->checkFlags($flags) === false) {
             throw new \Exception("LibSQLPHP Flags are not allowed to be used");
         }
 
-        $conn = $this->checkConnectionMode($path);
-        if ($conn === false || !in_array($conn['mode'], ['local', 'memory'])) {
+        $conn = $this->checkConnectionMode($path, $url, $token);
+        if ($conn === false || !in_array($conn['mode'], ['local', 'memory', 'remote_replica'])) {
             throw new \Exception("Error: Connection failed available mode: Local or in-momory");
         }
 
-        $this->db = $this->ffi->libsql_php_connect_local($conn['uri'], $this->checkFlags($flags), $encryptionKey);
-        $this->is_connected = ($this->db) ? true : false;
+        if ($conn['mode'] !== "remote_replica") {
+            $this->db = $this->ffi->libsql_php_connect_local($conn['uri'], $this->checkFlags($flags), $encryptionKey);
+            $this->is_connected = ($this->db) ? true : false;
+        } else {
+            $this->dbPair = $this->ffi->libsql_php_connect_new_remote_replica(
+                $path,
+                $url,
+                $token,
+                (int) $sync_interval,
+                (int) $read_your_writes
+            );
+            $this->db = $this->dbPair->conn;
+            $this->is_connected = ($this->dbPair->conn) ? true : false;
+        }
     }
 
     /**
@@ -421,8 +489,8 @@ class LibSQLPHP
             throw new \Exception("Error: Sync not work for local file connection.");
         }
 
-        $exec = $this->ffi->libsql_php_sync($this->db);
-        return $exec[0] === 0;
+        $exec = $this->ffi->libsql_php_sync($this->dbPair);
+        return $exec === 0;
     }
 
     /**
@@ -494,9 +562,17 @@ class LibSQLPHP
      *
      * @return array|false The connection mode details, or false if not applicable.
      */
-    private function checkConnectionMode($path): array|false
+    private function checkConnectionMode(string $path, string $url = "", string $token = ""): array|false
     {
-        if (strpos($path, "file:") !== false) {
+        if (strpos($path, "file:") !== false && !empty($url) && !empty($token)) {
+            $this->connection_mode = 'remote_replica';
+            $path = [
+                'mode' => $this->connection_mode,
+                'uri' => $path,
+                'url' => $url,
+                'token' => $token
+            ];
+        } else if (strpos($path, "file:") !== false) {
             $this->connection_mode = 'local';
             $path = [
                 'mode' => $this->connection_mode,
