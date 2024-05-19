@@ -11,6 +11,10 @@
             "php-src/helpers.php"
         ]
     },
+    "scripts": {
+        "post-install-cmd": ["./build"],
+        "post-update-cmd": ["./build"]
+    },
     "bin": ["build"],
     "authors": [
         {
