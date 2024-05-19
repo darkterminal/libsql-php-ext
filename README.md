@@ -15,9 +15,9 @@
 - PHP Installed
 - FFI Extension is Enabled (_Why? I read the C heder definition from wrapper_)
 
-## 🚨 DISCLAIMER 🚨
+## 🚨 DON'T WORRY ABOUT REQUIREMENTS 🚨
 
-I only tested using Linux. This library is stand-alone and can be used to perform database operations using LibSQL locally or in-memory similar to using SQLite3.
+Everything will be prepared when you install this extension. But, if you encountered an error; create an issue.
 
 ## How To Try it?
 
@@ -25,12 +25,6 @@ I only tested using Linux. This library is stand-alone and can be used to perfor
 
 ```bash
 composer require darkterminal/libsql-php-ext
-```
-
-**Build The Extension**
-
-```bash
-./vendor/bin/build
 ```
 
 ## 💡 Usage Examples and Available Features
