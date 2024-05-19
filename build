@@ -7,8 +7,15 @@ install_jq() {
         echo "jq is not installed. Installing jq..."
         
         if [[ "$os_name" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y jq
+            if command -v apt-get &>/dev/null; then
+                sudo apt-get update
+                sudo apt-get install -y jq
+            elif command -v yum &>/dev/null; then
+                sudo yum install -y jq
+            else
+                echo "Error: Unsupported package manager."
+                exit 1
+            fi
         elif [[ "$os_name" == "Darwin" ]]; then
             brew install jq
         else
@@ -22,6 +29,62 @@ install_jq() {
         fi
 
         echo "jq has been installed successfully."
+    fi
+}
+
+install_cargo() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt-get &>/dev/null; then
+            echo "Installing Rust and Cargo using apt-get..."
+            sudo apt-get update
+            sudo apt-get install -y curl
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        elif command -v yum &>/dev/null; then
+            echo "Installing Rust and Cargo using yum..."
+            sudo yum install -y curl
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        else
+            echo "Error: Neither apt-get nor yum found. Please install Rust and Cargo manually."
+            exit 1
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew &>/dev/null; then
+            echo "Installing Rust and Cargo using brew..."
+            brew install rust
+        else
+            echo "Error: Homebrew not found. Please install Homebrew and then install Rust and Cargo manually."
+            exit 1
+        fi
+    else
+        echo "Error: Unsupported OS. Please install Rust and Cargo manually."
+        exit 1
+    fi
+}
+
+install_compiler() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt-get &>/dev/null; then
+            echo "Installing C/C++ compiler using apt-get..."
+            sudo apt-get update
+            sudo apt-get install -y build-essential
+        elif command -v yum &>/dev/null; then
+            echo "Installing C/C++ compiler using yum..."
+            sudo yum groupinstall -y "Development Tools"
+        else
+            echo "Error: Neither apt-get nor yum found. Please install a C/C++ compiler manually."
+            exit 1
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew &>/dev/null; then
+            echo "Installing C/C++ compiler using brew..."
+            brew install gcc
+        else
+            echo "Error: Homebrew not found. Please install Homebrew and then install a C/C++ compiler manually."
+            exit 1
+        fi
+    else
+        echo "Error: Unsupported OS. Please install a C/C++ compiler manually."
+        exit 1
     fi
 }
 
@@ -44,7 +107,6 @@ check_composer_json() {
     return 0
 }
 
-# Function to build the extension
 build_extension() {
     if [ ! -f "Cargo.toml" ]; then
         echo "Error: Cargo.toml file not found in the extension directory. Please make sure it exists."
@@ -79,13 +141,17 @@ if ! php -m | grep -q 'FFI'; then
 fi
 
 if ! command -v cargo &>/dev/null; then
-    echo "Error: Rust and Cargo are required but not found. Please install Rust (including Cargo) to proceed."
-    exit 1
+    echo "Rust and Cargo not found. Installing..."
+    install_cargo
+else
+    echo "Rust and Cargo are already installed."
 fi
 
 if ! command -v cc &>/dev/null && ! command -v gcc &>/dev/null && ! command -v g++ &>/dev/null; then
-    echo "Error: C/C++ compiler is required but not found. Please install a C/C++ compiler to proceed."
-    exit 1
+    echo "C/C++ compiler not found. Installing..."
+    install_compiler
+else
+    echo "C/C++ compiler is already installed."
 fi
 
 echo "😎 OhMyPunk! You're using $os_name"
