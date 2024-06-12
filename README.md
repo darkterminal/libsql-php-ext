@@ -1,3 +1,7 @@
+<h1 align="center">🚨 THIS REPOSITORY IS READ-ONLY 🚨</h1>
+<h3 align="center">This repository is no longer under maintenance and has been moved to <br/> the official <a href="https://github.com/tursodatabase">Turso Database</a> repository under the name <a href="https://github.com/tursodatabase/turso-client-php">Turso Client PHP</a></h3>
+
+
 <p align="center">
     <img src="https://i.imgur.com/3tGQJNa.png" alt="LibSQL PHP Extension" width="1000">
 </p>

@@ -5,7 +5,7 @@ use Darkterminal\LibSQLPHPExtension\Utils\TransactionBehavior;
 
 require_once 'vendor/autoload.php';
 
-$db = new LibSQLPHP(path: "file:database.db", url: getenv('TURSO_DATABASE_URL'), token: getenv('TURSO_DATABASE_URL'));
+$db = new LibSQLPHP(path: "file:database.db", url: getenv('TURSO_DATABASE_URL'), token: getenv('TURSO_DATABASE_TOKEN'));
 if ($db->is_connected()) {
     echo $db->version() . PHP_EOL;
 
